@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
     # Database
+    POSTGRES_URL: Optional[str] = None
     NEON_DATABASE_URL: Optional[str] = None
     QUESTFORGE_DATABASE_URL: Optional[str] = None
     DATABASE_URL: str = "sqlite:///./questforge.db"
@@ -33,6 +34,8 @@ class Settings(BaseSettings):
     def effective_db_url(self) -> str:
         if self.QUESTFORGE_DATABASE_URL:
             return self.QUESTFORGE_DATABASE_URL
+        if self.POSTGRES_URL:
+            return self.POSTGRES_URL
         if os.environ.get("USE_NEON", "").lower() in ("true", "1") and (self.NEON_DATABASE_URL or self.DATABASE_URL):
             return self.NEON_DATABASE_URL or self.DATABASE_URL
         if self.ENVIRONMENT == "production" and self.DATABASE_URL and not self.DATABASE_URL.startswith("sqlite"):
