@@ -97,3 +97,11 @@ client_secret*.json
 *.db
 *.sqlite
 mlflow.db
+
+# Scratch script files
+build_hidden_secrets_short.py
+clean_catalog.py
+daily_theme_engine.py
+install_daywise_rotation.py
+install_hidden_secrets_theme.py
+test_out.txt

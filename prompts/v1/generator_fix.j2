@@ -1,0 +1,23 @@
+The generated problem code failed verification during sandboxed execution.
+Problem Title: {{ title }}
+Failed Stage: {{ stage }}
+Execution Error / Mismatch:
+{{ error_detail }}
+
+Original Reference Solution:
+{{ reference_solution }}
+
+Original Test Case Generator:
+{{ test_case_generator_code }}
+
+Provide corrected Python code for the reference solution and test case generator so that:
+1. The generator produces valid test cases conforming to constraints.
+2. The reference solution passes all cases within 2.0s without exceptions.
+3. The outputs strictly match the specification.
+
+Return ONLY a valid JSON object:
+{
+  "reference_solution_python": "def solve(): ...",
+  "brute_force_solution": "def brute_force(): ...",
+  "test_case_generator_code": "import random ..."
+}

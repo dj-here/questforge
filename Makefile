@@ -1,60 +1,58 @@
-.PHONY: install lint format test test-leakage test-cov run-api run-dashboard docker-up docker-down clean help
-
-PYTHON ?= python
-PIP ?= $(PYTHON) -m pip
-PYTEST ?= $(PYTHON) -m pytest
+.PHONY: help install dev dev-worker dev-frontend test test-cov seed lint docker-build up down clean
 
 help:
-	@echo "IndiaQuant Platform - Command Reference"
-	@echo "-----------------------------------------"
-	@echo "make install         : Install base and dev dependencies"
-	@echo "make lint            : Run ruff and mypy code quality checks"
-	@echo "make format          : Autoformat codebase using ruff and black"
-	@echo "make test            : Run fast unit test suite"
-	@echo "make test-leakage    : Run strict look-ahead leakage and point-in-time checks"
-	@echo "make test-cov        : Run pytest with test coverage report"
-	@echo "make run-api         : Start FastAPI inference microservice"
-	@echo "make run-dashboard   : Launch Streamlit analytics dashboard"
-	@echo "make docker-up       : Spin up local TimescaleDB, Redis, MLflow, API stack"
-	@echo "make docker-down     : Stop local Docker containers"
-	@echo "make clean           : Clean temporary caches, bytecode, and test artifacts"
+	@echo "QuestForge Development & Deployment Commands:"
+	@echo "  make install      - Install backend and frontend dependencies"
+	@echo "  make dev          - Run backend FastAPI dev server on :8000"
+	@echo "  make dev-worker   - Run Celery background worker"
+	@echo "  make dev-frontend - Run Next.js frontend dev server on :3000"
+	@echo "  make test         - Run pytest unit and integration suite"
+	@echo "  make test-cov     - Run pytest with minimum 80% coverage check"
+	@echo "  make seed         - Seed database with rubrics, users & sample questions"
+	@echo "  make lint         - Run ruff linting checks on backend"
+	@echo "  make up           - Spin up full docker-compose stack"
+	@echo "  make down         - Stop docker-compose stack"
+	@echo "  make clean        - Remove caches, test DBs, and build artifacts"
 
 install:
-	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev,serving,mlops,brokers]"
+	pip install -e ./backend
+	cd frontend && npm install
 
-lint:
-	$(PYTHON) -m ruff check src tests
-	$(PYTHON) -m mypy src tests
+dev:
+	uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
-format:
-	$(PYTHON) -m ruff check --fix src tests
-	$(PYTHON) -m black src tests
+dev-worker:
+	celery -A backend.app.workers.celery_app worker --loglevel=info --concurrency=4
+
+dev-frontend:
+	cd frontend && npm run dev
 
 test:
-	$(PYTEST) tests -v
-
-test-leakage:
-	$(PYTEST) tests/test_leakage.py -v
+	python -m pytest backend/tests/ -v
 
 test-cov:
-	$(PYTEST) --cov=india_quant --cov-report=term-missing --cov-report=html tests
+	python -m pytest backend/tests/ -v \
+		--cov=backend/app/pipeline \
+		--cov-report=term-missing \
+		--cov-fail-under=80
 
-run-api:
-	$(PYTHON) -m uvicorn india_quant.serving.app:app --host 0.0.0.0 --port 8000 --reload
+seed:
+	python -c "from backend.app.database import SessionLocal; from backend.app.seed.seed_data import seed_initial_data; db = SessionLocal(); seed_initial_data(db); db.close()"
 
-run-dashboard:
-	$(PYTHON) -m streamlit run src/india_quant/dashboard/app.py --server.port 8501
+lint:
+	ruff check backend/app
 
-docker-up:
-	docker compose -f infra/docker/docker-compose.yml up -d
+docker-build:
+	docker compose build
 
-docker-down:
-	docker compose -f infra/docker/docker-compose.yml down
+up:
+	docker compose up -d
+
+down:
+	docker compose down
 
 clean:
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	rm -rf build/ dist/ *.egg-info .coverage htmlcov/
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+	rm -f test_questforge.db test_ci.db
+	rm -rf .pytest_cache .coverage

@@ -1,0 +1,157 @@
+version: "3.9"
+
+services:
+  # ==========================================
+  # Relational Database: PostgreSQL 16
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: questforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-questforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-questforge_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-questforge}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U questforge -d questforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - questforge-network
+
+  # ==========================================
+  # In-Memory Cache & Message Broker: Redis
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: questforge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - questforge-network
+
+  # ==========================================
+  # Isolated Code Execution Sandbox Host
+  # ==========================================
+  sandbox:
+    build:
+      context: .
+      dockerfile: sandbox/Dockerfile
+    image: questforge-sandbox:latest
+    container_name: questforge-sandbox
+    restart: unless-stopped
+    networks:
+      - none
+
+  # ==========================================
+  # FastAPI REST Backend & Generation Engine
+  # ==========================================
+  backend-api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: questforge-backend-api
+    restart: unless-stopped
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://questforge:questforge_secret@postgres:5432/questforge
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
+      - HACKERRANK_ACCESS_TOKEN=${HACKERRANK_ACCESS_TOKEN}
+      - HACKERRANK_ENVIRONMENT=${HACKERRANK_ENVIRONMENT:-sandbox}
+      - HACKERRANK_DRY_RUN=${HACKERRANK_DRY_RUN:-false}
+      - SECRET_KEY=${SECRET_KEY:-questforge-production-super-secret-key-32-chars}
+      - SANDBOX_TYPE=${SANDBOX_TYPE:-docker}
+      - PROMPTS_DIR=/app/prompts/v1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - questforge-network
+
+  # ==========================================
+  # Celery Asynchronous Pipeline Worker
+  # ==========================================
+  celery-worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: questforge-celery-worker
+    restart: unless-stopped
+    command: celery -A backend.app.workers.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://questforge:questforge_secret@postgres:5432/questforge
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
+      - HACKERRANK_ACCESS_TOKEN=${HACKERRANK_ACCESS_TOKEN}
+      - HACKERRANK_ENVIRONMENT=${HACKERRANK_ENVIRONMENT:-sandbox}
+      - HACKERRANK_DRY_RUN=${HACKERRANK_DRY_RUN:-false}
+      - SECRET_KEY=${SECRET_KEY:-questforge-production-super-secret-key-32-chars}
+      - SANDBOX_TYPE=${SANDBOX_TYPE:-docker}
+      - PROMPTS_DIR=/app/prompts/v1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - questforge-network
+
+  # ==========================================
+  # Frontend Web UI: Next.js + Tailwind
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: questforge-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend-api
+    networks:
+      - questforge-network
+
+networks:
+  questforge-network:
+    driver: bridge
+  none:
+    driver: none
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local

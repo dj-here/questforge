@@ -1,0 +1,46 @@
+Generate a complete, competitive programming question matching the following specifications:
+Topic: {{ topic }}
+Sub-topic: {{ subtopic if subtopic else 'General' }}
+Difficulty: {{ difficulty }}
+Target Languages: {{ languages | join(', ') }}
+
+SPECIFICATION DIRECTIVES:
+{{ spec }}
+
+{% if error_feedback %}
+CRITICAL CORRECTION FROM PREVIOUS ATTEMPT:
+The previous JSON output failed validation with the following errors:
+{{ error_feedback }}
+Fix these issues strictly and ensure valid JSON conforming to the schema!
+{% endif %}
+
+OUTPUT FORMAT:
+Return ONLY a valid, parseable JSON object matching this schema exactly (no markdown formatting, no code block backticks, just raw JSON):
+{
+  "title": "Problem Title",
+  "story": "Complete problem statement narrative and background...",
+  "input_format": "Detailed stdin specification (e.g. First line contains N...)",
+  "output_format": "Detailed stdout specification (e.g. Print a single integer...)",
+  "constraints": "Strict numerical bounds (e.g. 1 <= N <= 10^5, -10^9 <= A[i] <= 10^9)",
+  "sample_inputs": [
+    "sample input string 1",
+    "sample input string 2"
+  ],
+  "sample_outputs": [
+    "sample output string 1",
+    "sample output string 2"
+  ],
+  "explanation": "Clear walk-through of the sample test cases.",
+  "tags": ["tag1", "tag2"],
+  "difficulty": "{{ difficulty }}",
+  "time_limit": 2.0,
+  "memory_limit": 256,
+  "reference_solution": {
+    "python": "def solve(): ... if __name__ == '__main__': solve()",
+    "java": "import java.util.*; public class Solution { public static void main(String[] args) { ... } }",
+    "cpp": "#include <bits/stdc++.h> using namespace std; int main() { ... }"
+  },
+  "brute_force_solution": "def brute_force(): ... if __name__ == '__main__': brute_force()",
+  "test_case_generator_code": "import random\n# Python code that generates and prints test cases delimited by '---TESTCASE---'\n# Should produce sample cases, edge cases (min/max bounds), and random stress tests.",
+  "editorial": "Pedagogical explanation of the optimal algorithm, invariant analysis, time complexity, and edge cases."
+}
