@@ -60,7 +60,13 @@ def create_generation_job(
     else:
         # Check Celery dispatch or fallback to FastAPI background tasks (skip heavy background exec during unit tests)
         import os
-        if os.environ.get("TESTING") != "True":
+        is_serverless = os.environ.get("VERCEL") == "1" or os.environ.get("SERVERLESS") == "true"
+        if is_serverless and os.environ.get("TESTING") != "True":
+            # In Vercel serverless without Celery daemon, run synchronously so generation completes before Lambda freeze
+            runner = PipelineRunner()
+            runner.run_job(db=db, job_id=job.id)
+            db.refresh(job)
+        elif os.environ.get("TESTING") != "True":
             try:
                 from backend.app.workers.tasks import generate_questions_task
                 generate_questions_task.delay(job_id=job.id)

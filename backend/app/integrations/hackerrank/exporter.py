@@ -32,10 +32,12 @@ class ChallengePackageExporter:
             if isinstance(question.reference_solution, dict):
                 if question.reference_solution.get("python"):
                     zf.writestr("solution.py", question.reference_solution["python"])
-                if question.reference_solution.get("java"):
-                    zf.writestr("Solution.java", question.reference_solution["java"])
+                if question.reference_solution.get("c"):
+                    zf.writestr("solution.c", question.reference_solution["c"])
                 if question.reference_solution.get("cpp"):
                     zf.writestr("solution.cpp", question.reference_solution["cpp"])
+                if question.reference_solution.get("java"):
+                    zf.writestr("Solution.java", question.reference_solution["java"])
 
             # 4. Input / Output Test Cases
             for idx, tc in enumerate(test_cases):

@@ -339,6 +339,17 @@ export default function QuestionEditor({ question, onClose, onUpdated }: Questio
                 </div>
               )}
 
+              {question.reference_solution?.c && (
+                <div>
+                  <span className="text-xs font-bold text-slate-700 uppercase mb-1 block">
+                    Reference Solution (C)
+                  </span>
+                  <pre className="p-4 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs overflow-x-auto max-h-64">
+                    {question.reference_solution.c}
+                  </pre>
+                </div>
+              )}
+
               {question.reference_solution?.cpp && (
                 <div>
                   <span className="text-xs font-bold text-slate-700 uppercase mb-1 block">

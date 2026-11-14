@@ -11,6 +11,7 @@ def map_difficulty_to_hackerrank(diff: str) -> str:
 
 def map_languages_to_hackerrank(languages: List[str]) -> List[str]:
     mapping = {
+        "c": "c",
         "python": "python3",
         "python3": "python3",
         "java": "java15",

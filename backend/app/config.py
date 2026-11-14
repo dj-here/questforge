@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     @property
     def effective_db_url(self) -> str:
+        if os.environ.get("TESTING") == "True":
+            return "sqlite:///./test_questforge.db"
         if self.QUESTFORGE_DATABASE_URL:
             return self.QUESTFORGE_DATABASE_URL
         if self.POSTGRES_URL:

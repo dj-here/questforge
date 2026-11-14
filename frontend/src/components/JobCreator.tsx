@@ -210,9 +210,10 @@ export default function JobCreator({ onJobCreated }: JobCreatorProps) {
             </label>
             <div className="flex items-center space-x-2 pt-1">
               {[
+                { id: "c", label: "C" },
+                { id: "cpp", label: "C++ 20" },
                 { id: "python", label: "Python 3" },
                 { id: "java", label: "Java 17" },
-                { id: "cpp", label: "C++ 20" },
                 { id: "sql", label: "PostgreSQL" },
               ].map((lang) => {
                 const active = languages.includes(lang.id);

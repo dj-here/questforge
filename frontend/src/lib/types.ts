@@ -44,8 +44,9 @@ export interface CriticResult {
 
 export interface ReferenceSolution {
   python?: string;
-  java?: string;
+  c?: string;
   cpp?: string;
+  java?: string;
   sql?: string;
 }
 

@@ -24,8 +24,10 @@ class UserOut(BaseModel):
 # --- LLM Strict Generation Schema ---
 class ReferenceSolutionSchema(BaseModel):
     python: str = Field(description="Production-grade Python 3 solution with complete imports and stdio handling")
-    java: Optional[str] = Field(default=None, description="Idiomatic Java solution class Solution with main")
+    c: Optional[str] = Field(default=None, description="Idiomatic standard C (C11) solution with complete stdio handling")
     cpp: Optional[str] = Field(default=None, description="Modern C++ solution with fast I/O")
+    java: Optional[str] = Field(default=None, description="Idiomatic Java solution class Solution with main")
+    sql: Optional[str] = Field(default=None, description="Standard SQL query for database tasks")
 
 class GeneratedQuestionSchema(BaseModel):
     title: str = Field(description="Clear, engaging problem title")
