@@ -49,9 +49,13 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     
-    # LLM (Anthropic)
+    # LLM Settings (Supports Google Gemini & Anthropic Claude)
+    LLM_PROVIDER: str = "gemini"
+    GEMINI_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
     ANTHROPIC_API_KEY: str = "mock-anthropic-key"
-    ANTHROPIC_MODEL: str = "claude-3-7-sonnet-20250219"
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     MOCK_LLM: bool = False
     
     # Sandbox

@@ -12,16 +12,62 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 class LLMClient:
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or settings.ANTHROPIC_API_KEY
-        self.model = model or settings.ANTHROPIC_MODEL
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None, provider: Optional[str] = None):
+        self.gemini_key = (
+            os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or settings.GEMINI_API_KEY
+            or settings.GOOGLE_API_KEY
+        )
+        self.anthropic_key = api_key or os.environ.get("ANTHROPIC_API_KEY") or settings.ANTHROPIC_API_KEY
+        
+        # Determine active provider
+        if provider:
+            self.provider = provider.lower()
+        elif self.gemini_key and self.gemini_key != "mock-gemini-key":
+            self.provider = "gemini"
+        elif settings.LLM_PROVIDER.lower() == "gemini" and self.gemini_key:
+            self.provider = "gemini"
+        else:
+            self.provider = "anthropic"
+
+        if self.provider == "gemini":
+            self.model = model or os.environ.get("GEMINI_MODEL") or settings.GEMINI_MODEL
+        else:
+            self.model = model or os.environ.get("ANTHROPIC_MODEL") or settings.ANTHROPIC_MODEL
+
         self.mock_mode = (os.environ.get("MOCK_LLM", "").lower() in ("true", "1")) or settings.MOCK_LLM
         self._client = None
-        if not self.mock_mode and self.api_key and self.api_key != "mock-anthropic-key":
+        if not self.mock_mode and self.anthropic_key and self.anthropic_key != "mock-anthropic-key":
             try:
-                self._client = anthropic.Anthropic(api_key=self.api_key)
+                self._client = anthropic.Anthropic(api_key=self.anthropic_key)
             except Exception as e:
                 logger.warning(f"Failed to initialize Anthropic client: {e}. Falling back to mock if needed.")
+
+    def _call_gemini(self, prompt: str, system: Optional[str] = None, max_tokens: int = 4000) -> str:
+        """Call Google Gemini (Antigravity) API using Google AI Studio REST endpoint."""
+        import httpx
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.gemini_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": 0.2
+            }
+        }
+        if system:
+            payload["systemInstruction"] = {"parts": [{"text": system}]}
+
+        with httpx.Client(timeout=45.0) as client:
+            resp = client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    return parts[0].get("text", "")
+            return ""
 
     def _extract_json_string(self, text: str) -> str:
         """Extract JSON content cleanly even if enclosed in markdown code fences."""
@@ -38,17 +84,32 @@ class LLMClient:
         return text
 
     def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 4000) -> str:
-        """Raw LLM text completion."""
-        if self.mock_mode or not self._client:
+        """Raw LLM text completion with Gemini/Anthropic/Mock routing."""
+        if self.mock_mode:
             return self._get_mock_raw_response(prompt)
-        
-        response = self._client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=system or "You are an elite competitive programming question author.",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
+
+        # 1. Try Google Gemini if configured
+        if self.provider == "gemini" and self.gemini_key:
+            try:
+                return self._call_gemini(prompt, system, max_tokens)
+            except Exception as e:
+                logger.warning(f"Google Gemini generation failed: {e}. Falling back...")
+
+        # 2. Try Anthropic Claude if configured
+        if self._client:
+            try:
+                response = self._client.messages.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    system=system or "You are an elite competitive programming question author.",
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.content[0].text
+            except Exception as e:
+                logger.warning(f"Anthropic generation failed: {e}. Falling back...")
+
+        # 3. Fallback to high-quality deterministic mock response
+        return self._get_mock_raw_response(prompt)
 
     def generate_structured(
         self,
