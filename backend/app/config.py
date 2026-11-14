@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "gemini"
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash"
     ANTHROPIC_API_KEY: str = "mock-anthropic-key"
     ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
     MOCK_LLM: bool = False
