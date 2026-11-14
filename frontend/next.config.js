@@ -3,7 +3,11 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   async rewrites() {
-    const apiTarget = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiTarget = process.env.NEXT_PUBLIC_API_URL;
+    // If no external API URL is configured, use Next.js native serverless Route Handlers
+    if (!apiTarget) {
+      return [];
+    }
     return [
       {
         source: "/auth/:path*",
