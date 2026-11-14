@@ -44,9 +44,13 @@ class ChallengePackageExporter:
                 zf.writestr(f"input/input{num_str}.txt", tc.input_data)
                 zf.writestr(f"output/output{num_str}.txt", tc.output_data)
 
-            # 5. Metadata JSON
+            # 5. Metadata & HackerRank 1-Click Import Schemas
+            import re
+            slug = re.sub(r'[^a-z0-9]+', '-', question.title.lower()).strip('-')
+
             meta = {
                 "title": question.title,
+                "slug": slug,
                 "difficulty": question.difficulty,
                 "time_limit": question.time_limit,
                 "memory_limit": question.memory_limit,
@@ -55,6 +59,32 @@ class ChallengePackageExporter:
             }
             import json
             zf.writestr("metadata.json", json.dumps(meta, indent=2))
+
+            # HackerRank Automated Challenge Importer format (challenge.json & config.json)
+            challenge_json = {
+                "name": question.title,
+                "slug": slug,
+                "body": question.story,
+                "problem_statement": question.story,
+                "input_format": question.input_format,
+                "output_format": question.output_format,
+                "constraints": question.constraints,
+                "difficulty": question.difficulty.lower(),
+                "tags": question.tags,
+                "editorial": question.editorial or "",
+                "time_limits": {
+                    "python3": question.time_limit,
+                    "cpp": max(1, question.time_limit // 2),
+                    "java": question.time_limit
+                },
+                "memory_limits": {
+                    "python3": question.memory_limit,
+                    "cpp": question.memory_limit,
+                    "java": question.memory_limit
+                }
+            }
+            zf.writestr("challenge.json", json.dumps(challenge_json, indent=2))
+            zf.writestr("config.json", json.dumps(challenge_json, indent=2))
 
         buffer.seek(0)
         return buffer.getvalue()
