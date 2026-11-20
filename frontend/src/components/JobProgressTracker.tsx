@@ -79,7 +79,7 @@ export default function JobProgressTracker({ jobId, onCompleted }: JobProgressTr
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {job.status === "running" && (
+          {(job.status === "running" || job.status === "processing") && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
               <Loader2 className="w-3 h-3 mr-1 animate-spin" /> In Progress ({Math.round(job.progress)}%)
             </span>

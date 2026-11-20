@@ -52,7 +52,10 @@ async function getAuthToken(): Promise<string | null> {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const base = getApiBase();
-  const url = `${base}${endpoint}`;
+  const isGet = !options.method || options.method === "GET";
+  const sep = endpoint.includes("?") ? "&" : "?";
+  const cacheBust = isGet ? `${sep}_t=${Date.now()}` : "";
+  const url = `${base}${endpoint}${cacheBust}`;
 
   const token = await getAuthToken();
   const headers: Record<string, string> = {
@@ -64,6 +67,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const response = await fetch(url, {
     ...options,
     headers,
+    cache: "no-store",
   });
 
   if (!response.ok) {

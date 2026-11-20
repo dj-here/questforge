@@ -10,9 +10,19 @@ export default function Navbar() {
   const [healthy, setHealthy] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/health")
-      .then((res) => setHealthy(res.ok))
-      .catch(() => setHealthy(false));
+    const checkHealth = () => {
+      fetch("/health", { cache: "no-store" })
+        .then((res) => setHealthy(res.ok))
+        .catch(() => {
+          fetch("http://localhost:8000/health", { cache: "no-store" })
+            .then((res) => setHealthy(res.ok))
+            .catch(() => setHealthy(false));
+        });
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const navLinks = [

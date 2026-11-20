@@ -19,11 +19,13 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       const [qs, jobs] = await Promise.all([
-        fetchQuestions({ limit: 6 }),
+        fetchQuestions({ limit: 100 }),
         fetchJobs(),
       ]);
       setQuestions(qs);
-      const runningJobs = jobs.filter((j) => j.status === "running" || j.status === "pending");
+      const runningJobs = jobs.filter(
+        (j) => j.status === "running" || j.status === "pending" || j.status === "processing"
+      );
       setActiveJobIds(runningJobs.map((j) => j.id));
     } catch (e) {
       console.error("Dashboard data load error:", e);
@@ -39,7 +41,8 @@ export default function Dashboard() {
   }, []);
 
   const handleJobCreated = (newJobId: string) => {
-    setActiveJobIds((prev) => [newJobId, ...prev]);
+    setActiveJobIds((prev) => Array.from(new Set([newJobId, ...prev])));
+    loadData();
   };
 
   const handleApprove = async (id: string) => {
@@ -169,7 +172,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {questions.map((q) => (
+            {questions.slice(0, 6).map((q) => (
               <QuestionCard
                 key={q.id}
                 question={q}

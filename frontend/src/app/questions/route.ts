@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { Question } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function mapQuestion(q: any, testCases: any[] = []): Question {
   const parseJson = (val: any, fallback: any) => {
@@ -68,15 +69,26 @@ export async function GET(req: Request) {
 
     const sql = getDb();
 
-    // Query questions and test cases
-    const questionsRows = await sql`
-      SELECT * FROM questions 
-      ORDER BY created_at DESC 
-      LIMIT ${limit} OFFSET ${skip}
-    `;
+    // Query questions directly with status filter if present to avoid pagination misses
+    const questionsRows = status
+      ? await sql`
+          SELECT * FROM questions 
+          WHERE status = ${status}
+          ORDER BY created_at DESC 
+          LIMIT ${limit} OFFSET ${skip}
+        `
+      : await sql`
+          SELECT * FROM questions 
+          ORDER BY created_at DESC 
+          LIMIT ${limit} OFFSET ${skip}
+        `;
 
     if (!questionsRows || questionsRows.length === 0) {
-      return NextResponse.json([]);
+      return NextResponse.json([], {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
     }
 
     const questionIds = questionsRows.map((q: any) => q.id);
@@ -108,11 +120,6 @@ export async function GET(req: Request) {
         (r) => r.difficulty.toLowerCase() === difficulty.toLowerCase()
       );
     }
-    if (status) {
-      results = results.filter(
-        (r) => r.status.toLowerCase() === status.toLowerCase()
-      );
-    }
     if (search) {
       const s = search.toLowerCase();
       results = results.filter(
@@ -123,12 +130,21 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json(results);
+    return NextResponse.json(results, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
+    });
   } catch (err: any) {
     console.error("GET /questions error:", err);
     return NextResponse.json(
       { error: err?.message || "Failed to fetch questions" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
     );
   }
 }

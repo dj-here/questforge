@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { CreateJobPayload, Difficulty, QuestionType } from "../lib/types";
 import { createGenerationJob } from "../lib/api";
-import { Sparkles, Sliders, CheckSquare, Zap, AlertCircle } from "lucide-react";
+import { Sparkles, Sliders, CheckSquare, Zap, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface JobCreatorProps {
   onJobCreated?: (jobId: string) => void;
@@ -38,6 +38,7 @@ export default function JobCreator({ onJobCreated }: JobCreatorProps) {
   const [autoPublish, setAutoPublish] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const toggleLanguage = (lang: string) => {
     if (languages.includes(lang)) {
@@ -53,6 +54,7 @@ export default function JobCreator({ onJobCreated }: JobCreatorProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
 
     const effectiveTopic = topic === "Custom" ? customTopic.trim() : topic;
     if (!effectiveTopic) {
@@ -73,6 +75,7 @@ export default function JobCreator({ onJobCreated }: JobCreatorProps) {
       };
 
       const job = await createGenerationJob(payload);
+      setSuccessMessage(`Coding challenge for "${effectiveTopic}" was generated successfully and added to the review queue!`);
       if (onJobCreated) {
         onJobCreated(job.id);
       }
@@ -99,6 +102,35 @@ export default function JobCreator({ onJobCreated }: JobCreatorProps) {
           Docker Sandbox Protected
         </span>
       </div>
+
+      {isSubmitting && (
+        <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-200 flex items-start space-x-3 text-indigo-900 text-sm animate-pulse">
+          <div className="w-5 h-5 flex-shrink-0 mt-0.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <div>
+            <p className="font-semibold text-indigo-950">Generating Challenge with AI Pipeline...</p>
+            <p className="text-indigo-700 text-xs mt-0.5">
+              Generating problem story, reference solutions, and test cases via Gemini. This typically takes 10–20 seconds. Please hold on!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-3 text-emerald-900 text-sm">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600" />
+          <div className="flex-1">
+            <p className="font-semibold text-emerald-950">Generation Complete!</p>
+            <p className="text-emerald-700 text-xs mt-0.5">{successMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start space-x-3 text-rose-800 text-sm">
