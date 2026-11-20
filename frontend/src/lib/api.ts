@@ -159,23 +159,39 @@ export async function regenerateQuestion(id: string): Promise<Question> {
 export async function publishQuestion(
   id: string,
   dryRun = false,
-  testId?: string
+  testId?: string,
+  token?: string
 ): Promise<PublishResult> {
+  const hrToken =
+    token ||
+    (typeof window !== "undefined"
+      ? localStorage.getItem("questforge_hr_token") || undefined
+      : undefined);
+
   return request<PublishResult>(`/questions/${id}/publish`, {
     method: "POST",
-    body: JSON.stringify({ dry_run: dryRun, test_id: testId }),
+    headers: hrToken ? { "x-hackerrank-token": hrToken } : {},
+    body: JSON.stringify({ dry_run: dryRun, test_id: testId, token: hrToken }),
   });
 }
 
 export async function publishBulk(
   questionIds: string[],
-  dryRun = false
-): Promise<{ total: number; successful: number; failed: number; results: PublishResult[] }> {
-  return request<{ total: number; successful: number; failed: number; results: PublishResult[] }>(
+  dryRun = false,
+  token?: string
+): Promise<{ total: number; published: number; failed: number; results: PublishResult[] }> {
+  const hrToken =
+    token ||
+    (typeof window !== "undefined"
+      ? localStorage.getItem("questforge_hr_token") || undefined
+      : undefined);
+
+  return request<{ total: number; published: number; failed: number; results: PublishResult[] }>(
     "/publish/bulk",
     {
       method: "POST",
-      body: JSON.stringify({ question_ids: questionIds, dry_run: dryRun }),
+      headers: hrToken ? { "x-hackerrank-token": hrToken } : {},
+      body: JSON.stringify({ question_ids: questionIds, dry_run: dryRun, token: hrToken }),
     }
   );
 }

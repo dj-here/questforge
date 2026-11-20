@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Question, PublishResult } from "../../lib/types";
 import { fetchQuestions, publishBulk, publishQuestion, getExportZipUrl } from "../../lib/api";
 import QuestionEditor from "../../components/QuestionEditor";
-import { Send, Download, ExternalLink, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw } from "lucide-react";
+import { Send, Download, ExternalLink, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Key, Check, X } from "lucide-react";
 
 export default function PublishPage() {
   const [approvedQuestions, setApprovedQuestions] = useState<Question[]>([]);
@@ -15,6 +15,30 @@ export default function PublishPage() {
   const [results, setResults] = useState<PublishResult[] | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hrToken, setHrToken] = useState<string>("");
+  const [showTokenInput, setShowTokenInput] = useState<boolean>(false);
+  const [tokenInputVal, setTokenInputVal] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("questforge_hr_token") || "";
+      setHrToken(stored);
+      setTokenInputVal(stored);
+    }
+  }, []);
+
+  const saveToken = () => {
+    const trimmed = tokenInputVal.trim();
+    setHrToken(trimmed);
+    if (typeof window !== "undefined") {
+      if (trimmed) {
+        localStorage.setItem("questforge_hr_token", trimmed);
+      } else {
+        localStorage.removeItem("questforge_hr_token");
+      }
+    }
+    setShowTokenInput(false);
+  };
 
   const loadQuestions = async () => {
     setLoading(true);
@@ -57,7 +81,7 @@ export default function PublishPage() {
     setPublishing(true);
     setResults(null);
     try {
-      const res = await publishBulk(selectedIds, dryRun);
+      const res = await publishBulk(selectedIds, dryRun, hrToken || undefined);
       setResults(res.results);
       setSelectedIds([]);
       loadQuestions();
@@ -82,56 +106,117 @@ export default function PublishPage() {
               </span>
             </div>
             <p className="text-xs text-slate-300">
-              Deploy approved coding challenges to HackerRank for Work with automatic payload translation and exponential backoff retry.
+              Deploy approved coding challenges directly to HackerRank for Work or export as 1-click importable packages.
             </p>
           </div>
 
-          <div className="flex items-center space-x-4 bg-slate-800/80 px-4 py-2.5 rounded-xl border border-slate-700/80">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-semibold text-slate-200">Bearer Auth Active</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowTokenInput(!showTokenInput)}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                hrToken
+                  ? "bg-emerald-950/70 border-emerald-700/80 text-emerald-300 hover:bg-emerald-900/60"
+                  : "bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>{hrToken ? "Bearer Token: Active" : "Set API Token"}</span>
+            </button>
+
+            <div className="bg-slate-800/80 px-3.5 py-1.5 rounded-xl border border-slate-700/80">
+              <label className="flex items-center space-x-2 text-xs font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={dryRun}
+                  onChange={(e) => setDryRun(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+                <span className={dryRun ? "text-amber-300 font-bold" : "text-slate-400"}>
+                  Dry-Run Mode
+                </span>
+              </label>
             </div>
-            <div className="h-4 w-px bg-slate-700"></div>
-            <label className="flex items-center space-x-2 text-xs font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={dryRun}
-                onChange={(e) => setDryRun(e.target.checked)}
-                className="accent-indigo-500 rounded"
-              />
-              <span className={dryRun ? "text-amber-300 font-bold" : "text-slate-400"}>
-                Dry-Run Mode
-              </span>
-            </label>
           </div>
         </div>
+
+        {/* Token Configuration Drawer */}
+        {showTokenInput && (
+          <div className="mt-4 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex-1">
+              <input
+                type="password"
+                placeholder="Enter HackerRank for Work Bearer Access Token (or leave blank for Dry-Run mode)..."
+                value={tokenInputVal}
+                onChange={(e) => setTokenInputVal(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs bg-slate-800 text-white border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={saveToken}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Save Token</span>
+              </button>
+              {hrToken && (
+                <button
+                  onClick={() => {
+                    setTokenInputVal("");
+                    setHrToken("");
+                    if (typeof window !== "undefined") localStorage.removeItem("questforge_hr_token");
+                    setShowTokenInput(false);
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setShowTokenInput(false)}
+                className="p-2 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Results Banner if published */}
       {results && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs space-y-2">
-          <div className="flex items-center justify-between font-bold text-emerald-900">
-            <span>Publish Operation Completed</span>
-            <button onClick={() => setResults(null)} className="underline">
+        <div className="p-4 bg-white border border-slate-200 rounded-2xl text-xs space-y-2 shadow-sm">
+          <div className="flex items-center justify-between font-bold text-slate-900 border-b border-slate-100 pb-2">
+            <span className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Publish Batch Results</span>
+            </span>
+            <button onClick={() => setResults(null)} className="text-slate-400 hover:text-slate-600 font-normal">
               Dismiss
             </button>
           </div>
-          <div className="divide-y divide-emerald-200">
-            {results.map((r) => (
-              <div key={r.question_id} className="py-1.5 flex items-center justify-between text-emerald-800">
-                <span className="font-mono">{r.question_id}</span>
-                {r.url ? (
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center space-x-1 font-bold underline"
-                  >
-                    <span>View on HackerRank</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+          <div className="divide-y divide-slate-100">
+            {results.map((r: any) => (
+              <div key={r.question_id} className="py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-slate-800">
+                <span className="font-mono text-xs text-slate-600">{r.question_id}</span>
+                {r.success ? (
+                  <div className="flex items-center space-x-3">
+                    {r.url ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center space-x-1 font-bold text-indigo-600 hover:text-indigo-800 underline"
+                      >
+                        <span>View on HackerRank</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="font-semibold text-emerald-600">Validated (Dry-Run Mode)</span>
+                    )}
+                  </div>
                 ) : (
-                  <span className="font-semibold text-emerald-700">Validated (Dry-Run)</span>
+                  <span className="text-rose-600 font-semibold">{r.error || "Publish failed"}</span>
                 )}
               </div>
             ))}
