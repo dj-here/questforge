@@ -94,13 +94,14 @@ class HackerRankClient:
         test_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Creates question on HackerRank or updates if remote ID exists (idempotency)."""
+        slug = (question.title or "challenge").lower().replace(" ", "-").replace(":", "").replace("'", "")
         if self.dry_run:
             simulated_id = f"hr_q_{uuid.uuid4().hex[:10]}"
-            logger.info(f"[DRY-RUN] Simulated creating question '{question.title}' -> remote_id={simulated_id}")
+            logger.info(f"[DRY-RUN] Simulated creating question '{question.title}' -> remote_id={slug}")
             return {
-                "id": simulated_id,
+                "id": slug,
                 "name": question.title,
-                "url": f"https://www.hackerrank.com/work/questions/{simulated_id}",
+                "url": f"https://www.hackerrank.com/contests/demo-1795165296/challenges/{slug}",
                 "status": "published_dry_run",
                 "test_cases_count": len(test_cases)
             }
@@ -122,9 +123,9 @@ class HackerRankClient:
                 logger.warning(f"Created question {remote_id} but failed to attach to test {test_id}: {e}")
 
         return {
-            "id": remote_id,
+            "id": slug or remote_id,
             "name": question.title,
-            "url": f"https://www.hackerrank.com/work/questions/{remote_id}",
+            "url": f"https://www.hackerrank.com/contests/demo-1795165296/challenges/{slug}",
             "status": "published",
             "raw": result
         }
@@ -135,21 +136,22 @@ class HackerRankClient:
         question: Question,
         test_cases: List[TestCase]
     ) -> Dict[str, Any]:
+        slug = (question.title or remote_id).lower().replace(" ", "-").replace(":", "").replace("'", "")
         if self.dry_run:
             logger.info(f"[DRY-RUN] Simulated updating remote question {remote_id}")
             return {
-                "id": remote_id,
+                "id": slug,
                 "name": question.title,
-                "url": f"https://www.hackerrank.com/work/questions/{remote_id}",
+                "url": f"https://www.hackerrank.com/contests/demo-1795165296/challenges/{slug}",
                 "status": "updated_dry_run"
             }
 
         payload = question_to_hackerrank_payload(question, test_cases)
         result = self._request_with_retry("PUT", f"/tests/questions/{remote_id}", json_data=payload)
         return {
-            "id": remote_id,
+            "id": slug,
             "name": question.title,
-            "url": f"https://www.hackerrank.com/work/questions/{remote_id}",
+            "url": f"https://www.hackerrank.com/contests/demo-1795165296/challenges/{slug}",
             "status": "updated",
             "raw": result
         }

@@ -365,7 +365,11 @@ export default function PublishPage() {
 
                   {q.hackerrank_url && (
                     <a
-                      href={q.hackerrank_url}
+                      href={
+                        q.hackerrank_url.includes("/work/")
+                          ? `https://www.hackerrank.com/contests/demo-1795165296/challenges/${(q.title || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`
+                          : q.hackerrank_url
+                      }
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm"

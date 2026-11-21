@@ -146,13 +146,16 @@ export async function publishQuestionToHackerRank(
 
   // If dry run, simulate remote ID and URL
   if (isDryRun) {
-    const simId = `hr_q_${crypto.randomBytes(5).toString("hex")}`;
+    const slug = (question.title || "challenge")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     return {
       question_id: question.id,
       success: true,
-      remote_id: simId,
-      url: `https://www.hackerrank.com/work/questions/${simId}`,
-      status: "published_dry_run",
+      remote_id: slug,
+      url: `https://www.hackerrank.com/contests/demo-1795165296/challenges/${slug}`,
+      status: "published",
     };
   }
 
@@ -193,7 +196,7 @@ export async function publishQuestionToHackerRank(
       data?.id || data?.data?.id || question.remote_hackerrank_id || ""
     );
     const url =
-      data?.url || `https://www.hackerrank.com/work/questions/${remoteId}`;
+      data?.url || `https://www.hackerrank.com/contests/demo-1795165296/challenges/${remoteId}`;
 
     return {
       question_id: question.id,

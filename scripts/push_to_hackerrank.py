@@ -36,11 +36,25 @@ def get_db_connection():
 def fetch_questions(conn, question_id=None, all_approved=False):
     cur = conn.cursor(cursor_factory=RealDictCursor)
     if question_id:
-        cur.execute("SELECT * FROM questions WHERE id = %s LIMIT 1", (question_id,))
+        ids = [x.strip() for x in question_id.split(",") if x.strip()]
+        if len(ids) == 1:
+            cur.execute("SELECT * FROM questions WHERE id = %s LIMIT 1", (ids[0],))
+        else:
+            cur.execute("SELECT * FROM questions WHERE id = ANY(%s) ORDER BY created_at ASC", (ids,))
     elif all_approved:
-        cur.execute("SELECT * FROM questions WHERE status IN ('approved', 'published') ORDER BY created_at ASC")
+        cur.execute("""
+            SELECT * FROM questions 
+            WHERE status IN ('approved', 'published') 
+              AND (hackerrank_url IS NULL OR hackerrank_url NOT LIKE '%contests/demo-1795165296%')
+            ORDER BY created_at ASC
+        """)
     else:
-        cur.execute("SELECT * FROM questions WHERE status IN ('approved', 'published') ORDER BY created_at ASC")
+        cur.execute("""
+            SELECT * FROM questions 
+            WHERE status IN ('approved', 'published') 
+              AND (hackerrank_url IS NULL OR hackerrank_url NOT LIKE '%contests/demo-1795165296%')
+            ORDER BY created_at ASC
+        """)
     rows = cur.fetchall()
     cur.close()
     return rows
@@ -279,9 +293,24 @@ def update_db_published(conn, question_id, slug):
             published_at = NOW(),
             updated_at = NOW()
         WHERE id = %s
-    """, (slug, f"https://www.hackerrank.com/challenges/{slug}", question_id))
+    """, (slug, f"https://www.hackerrank.com/contests/demo-1795165296/challenges/{slug}", question_id))
     conn.commit()
     cur.close()
+
+def resolve_challenge_id_from_contest(page, contest_id, challenge_slug):
+    url = f"https://www.hackerrank.com/administration/contests/edit/{contest_id}/challenges"
+    page.goto(url, wait_until="domcontentloaded")
+    page.wait_for_timeout(2500)
+    links = page.query_selector_all("a[href*='/challenges/edit/']")
+    for l in links:
+        href = l.get_attribute("href") or ""
+        row = (l.evaluate("el => el.closest('tr')?.innerText || ''") or "").lower()
+        if challenge_slug in href or challenge_slug in row.replace(" ", "-"):
+            import re
+            m = re.search(r'/challenges/edit/(\d+)', href)
+            if m:
+                return m.group(1)
+    return None
 
 def main():
     parser = argparse.ArgumentParser(description="Auto-publish QuestForge questions to HackerRank Community")
@@ -337,6 +366,10 @@ def main():
             if slug:
                 # 1. Link to contest
                 link_challenge_to_contest(page, args.contest_id, slug)
+                if not ch_id:
+                    ch_id = resolve_challenge_id_from_contest(page, args.contest_id, slug)
+                    if ch_id:
+                        print(f"  🔍 Resolved challenge ID from contest: {ch_id}")
                 # 2. Populate Problem Statement details
                 populate_problem_details(page, args.contest_id, ch_id, q)
                 # 3. Upload test cases via ZIP
